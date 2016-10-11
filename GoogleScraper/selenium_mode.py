@@ -292,8 +292,12 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         Raises:
             MaliciousRequestDetected when there was not way to stp Google From denying our requests.
         """
+        logger.info('handle_request_denied!!!!!!!')
+        time.sleep(20)
+        return self._wait_until_search_input_field_appears(100 * 60 * 60)
+
         # selenium webdriver objects have no status code :/
-        super().handle_request_denied('400')
+        '''super().handle_request_denied('400')
 
         needles = self.malicious_request_needles[self.search_engine_name]
 
@@ -322,7 +326,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
                 # Just wait until the user solves the captcha in the browser window
                 # 10 hours if needed :D
                 logger.info('Waiting for user to solve captcha')
-                return self._wait_until_search_input_field_appears(10 * 60 * 60)
+                return self._wait_until_search_input_field_appears(10 * 60 * 60)'''
 
     def build_search(self):
         """Build the search for SelScrapers"""
@@ -407,8 +411,12 @@ class SelScrape(SearchEngineScrape, threading.Thread):
             The url of the next page or False if there is no such url
                 (end of available pages for instance).
         """
-        next_url = ''
-        element = self._find_next_page_element()
+        try:
+            next_url = ''
+            element = self._find_next_page_element()
+        except Exception as ex:
+            print(ex)
+            return False
 
         if hasattr(element, 'click'):
             next_url = element.get_attribute('href')
@@ -474,7 +482,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         if self.search_type == 'normal':
 
             if self.search_engine_name == 'google':
-                selector = '#navcnt td.cur'
+                selector = 'body.srp'
             elif self.search_engine_name == 'yandex':
                 selector = '.pager__item_current_yes font font'
             elif self.search_engine_name == 'bing':
@@ -521,7 +529,9 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         Fills out the search form of the search engine for each keyword.
         Clicks the next link while pages_per_keyword is not reached.
         """
+        processed = []
         for self.query, self.pages_per_keyword in self.jobs.items():
+            print("Processed "+str(len(processed))+" of "+str(len(self.jobs.items())))
 
             self.search_input = self._wait_until_search_input_field_appears()
 
@@ -529,7 +539,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
                 self.status = 'Malicious request detected'
                 return
 
-            if self.search_input is False:
+            if self.search_input is False or 'sorry' in self.webdriver.current_url:
                 # @todo: pass status_code
                 self.search_input = self.handle_request_denied()
 
@@ -592,6 +602,14 @@ class SelScrape(SearchEngineScrape, threading.Thread):
 
                     if not next_url:
                         break
+
+            processed.append(self.query)
+
+        log = open("processed", 'a')
+        for item in processed:
+            log.write("%s\n" % item)
+
+
 
     def page_down(self):
         """Scrolls down a page with javascript.
